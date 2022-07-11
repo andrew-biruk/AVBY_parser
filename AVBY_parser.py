@@ -5,34 +5,22 @@ from json import dump
 from csv import DictWriter
 from math import ceil
 
-URL = "https://cars.av.by/"
+URL = "https://cars.av.by/filter?brands[0][brand]=8&brands[0][model]=5865&brands[0][generation]=4441"
 HEADERS = {
     "accept": "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
     "user-agent": "Chrome/102.0.0.0"}
-params = {
-    "bmw": {
-        "brands[0][brand]": 8,
-        "brands[0][model]": 5865,
-        "brands[0][generation]": 4441,
-        "page": 1},
-    "audi": {
-        "brands[0][brand]": 6,
-        "brands[0][model]": 5810,
-        "brands[0][generation]": 4301,
-        "page": 1}}
 
 
-def parse_av_lxml(target: str, par: dict) -> list[dict]:
+def parse_av_lxml(target: str) -> list[dict]:
     """
     :param target: base URL
-    :param par: query parameters for specified model
     :return : JSON/CSV serializable array, which each item contains
     link to car, motor params, year of manufacturing, mileage and price"""
     cars = []
 
     def parser(lst: list) -> None:
         """parses given page and updates outer scope container with results"""
-        req = get(target + "filter", params=par, headers=HEADERS)
+        req = get(target, headers=HEADERS)
         res = html.fromstring(req.text).xpath("//div[@class='listing__items']")[0]
 
         def f(name: str):
@@ -64,7 +52,7 @@ def parse_av_lxml(target: str, par: dict) -> list[dict]:
         # combine all the data together:
         for c, y, f, v, m, b, u in zip(links, yage, fuel, volm, kage, prices_byn, prices_usd):
             lst.append({
-                "link": target[:-1] + c,
+                "link": "https://cars.av.by" + c,
                 "year": y,
                 "engine": v,
                 "fuel": f,
@@ -73,28 +61,27 @@ def parse_av_lxml(target: str, par: dict) -> list[dict]:
                 "price_usd": u})
 
     # first request to estimate number of pages to go through:
-    test_req = get(target + "filter", params=par, headers=HEADERS)
+    test_req = get(target, headers=HEADERS)
     pages = ceil(int(html.fromstring(test_req.text).xpath("//h3[@class='listing__title']/text()")[2]) / 25)
 
     # go through pages:
     for p in range(1, pages + 1):
-        par["page"] = p
+        target += f"&page={p}"
         parser(cars)
 
     return cars
 
 
-def parse_av_bs(target: str, par: dict) -> list[dict]:
+def parse_av_bs(target: str) -> list[dict]:
     """Parses AV.BY for specific model (dependent on query parameters)
     :param target: base URL
-    :param par: query parameters for specified model
     :return : JSON/CSV serializable array, which each item contains
     link to car, motor params, year of manufacturing, mileage and price"""
     cars = []
 
     def parser(lst: list) -> None:
         """parses target url and updates outer scope container with results"""
-        req = get(target + "filter", params=par, headers=HEADERS).text
+        req = get(target, headers=HEADERS).text
         res = bs(req, 'html.parser').find_all('div', class_='listing-item__wrap')
 
         def f(name: str):
@@ -125,7 +112,7 @@ def parse_av_bs(target: str, par: dict) -> list[dict]:
 
         # add the car data to car list:
             lst.append({
-                "link": target[:-1] + link,
+                "link": "https://cars.av.by" + link,
                 "year": yage,
                 "engine": volm,
                 "fuel": fuel,
@@ -134,13 +121,13 @@ def parse_av_bs(target: str, par: dict) -> list[dict]:
                 "price_usd": price_usd})
 
     # first request to estimate number of pages to go through:
-    test_req = get(target + "filter", params=par, headers=HEADERS)
+    test_req = get(target, headers=HEADERS)
     number_results = bs(test_req.text, "html.parser").find("h3", class_="listing__title").text.split()[1]
     pages = ceil(int(number_results) / 25)
 
     # go through pages:
     for p in range(1, pages + 1):
-        par["page"] = p
+        target += f"&page={p}"
         parser(cars)
 
     return cars
@@ -153,8 +140,8 @@ def write_json_csv(data: list[dict], filename: str) -> None:
         writer = DictWriter(csv_fw, data[0].keys(), delimiter=";")
         writer.writeheader()
         writer.writerows(data)
+    print("Load complete.")
 
 
-for i in ("bmw", "audi"):
-    temp = sorted(parse_av_lxml(URL, params[i]), key=lambda x: x["price_usd"], reverse=True)
-    write_json_csv(temp, i)
+bmw = sorted(parse_av_lxml(URL), key=lambda x: x["price_usd"], reverse=True)
+write_json_csv(bmw, "bmw")
