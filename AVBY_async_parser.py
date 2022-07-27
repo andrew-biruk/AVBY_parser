@@ -26,6 +26,7 @@ def parser(url: str, save_as_file: str) -> None:
 
     def total_pages() -> int:
         """Calculates number of pages to go through"""
+        
         resp = get(url, headers=HEADERS)
         number_of_results = int(html.fromstring(resp.text).xpath("//h3[@class='listing__title']/text()")[2])
         pages = ceil(number_of_results / 25)
@@ -34,6 +35,7 @@ def parser(url: str, save_as_file: str) -> None:
 
     async def parse_page(current_page: int, storage: list) -> None:
         """Extracts information from one given page, saves to storage"""
+        
         async with aiohttp.request("GET", url=url + f"&page={current_page}", headers=HEADERS) as response:
             content = await response.text()
             res = html.fromstring(content).xpath("//div[@class='listing__items']")[0]
@@ -72,6 +74,7 @@ def parser(url: str, save_as_file: str) -> None:
 
     async def parse_all_pages() -> list:
         """Creates tasks to parse all pages, returns list of results"""
+        
         search_result = list()
         await asyncio.gather(*[parse_page(current_page=p,
                                           storage=search_result) for p in range(1, total_pages() + 1)])
