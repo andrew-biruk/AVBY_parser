@@ -1,4 +1,3 @@
-import os
 from requests import get
 from lxml import html
 from bs4 import BeautifulSoup as bs
@@ -136,8 +135,6 @@ def parse_av_bs(target: str) -> list[dict]:
 
 def write_json_csv(data: list[dict], filename: str) -> None:
     """creates filename.json and filename.csv in project directory"""
-    os.mkdir("Data")
-    os.chdir(os.getcwd() + "/" + "Data")
     with open(f"{filename}.json", "w") as json_fw, open(f"{filename}.csv", "w", newline="") as csv_fw:
         dump(data, json_fw, indent=2)
         writer = DictWriter(csv_fw, data[0].keys(), delimiter=";")
