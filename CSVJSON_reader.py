@@ -35,6 +35,6 @@ def regular_print(file_name: str) -> None:
     print(f"FILE: {file_name}")
     print(options[extension]())
 
-
-pretty_print("bmwBS.csv")
-regular_print("bmwBS.csv")
+file = input("Enter file name >> ")
+pretty_print(file)
+regular_print(file)
